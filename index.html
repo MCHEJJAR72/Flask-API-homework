@@ -1,0 +1,109 @@
+To create a basic RESTful API with CRUD operations (Create, Retrieve, Update, Delete) for managing cars, and ensure it's secure with token verification, we'll use Node.js with Express and MongoDB. Here’s a structured approach to achieve this:
+Prerequisites
+1.	Node.js installed on your machine.
+2.	MongoDB installed locally or accessible via a cloud service.
+3.	Insomnia (or any API testing tool) installed.
+Steps
+1. Initialize the Project
+Create a new directory for your project, navigate into it, and initialize a new Node.js project:
+mkdir car-api
+cd car-api
+npm init -y
+2. Install Dependencies
+Install necessary packages: Express for the server, Mongoose for MongoDB object modeling, and JSONWebToken (JWT) for authentication:
+npm install express mongoose jsonwebtoken
+3. Set Up the Server (index.js)
+Create an index.js file to set up the Express server:
+const express = require('express');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const secretKey = 'your_secret_key'; // Replace with a strong, randomly-generated string
+
+// Middleware
+app.use(bodyParser.json());
+
+// MongoDB Connection
+mongoose.connect('mongodb://localhost:27017/carDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,});
+
+// Schema and Model
+const carSchema = new mongoose.Schema({
+  make: String,
+  model: String,
+  year: Number,});
+
+const Car = mongoose.model('Car', carSchema);
+
+// Helper function for token verification
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+  if (!token) return res.status(401).send('Access Denied');
+
+  try {const verified = jwt.verify(token, secretKey);
+    req.user = verified;
+    next();
+  
+    res.status(400).send('Invalid Token');};
+
+// Routes
+app.post('/api/login', (req, res) => {
+  // Normally you would authenticate the user here and generate a token
+  const user = { id: 1, username: 'test_user' }; // Example user
+  const token = jwt.sign(user, secretKey);res.json({ token });});
+
+// Create a new car
+app.post('/api/cars', verifyToken, async (req, res) => {
+  const { make, model, year } = req.body;
+  const car = new Car({ make, model, year });
+  try {const savedCar = await car.save(); res.json(savedCar);}
+    res.status(400).send(err);
+  
+// Get all cars
+app.get('/api/cars', verifyToken, async (req, res) => {
+  
+    const cars = await Car.find(); res.json(cars); } catch (err) {
+    res.status(400).send(err);
+
+// Get a single car by ID
+app.get('/api/cars/:id', verifyToken, async (req, res) => {
+  
+    const car = await Car.findById(req.params.id);
+    if (!car) res.status(404).send('Car not found'); res.json(car);
+  catch (err) { res.status(400).send(err); }});
+
+// Update a car by ID
+app.put('/api/cars/:id', verifyToken, async (req, res) => {
+  
+    const updatedCar = await Car.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedCar) res.status(404).send('Car not found');
+    res.json(updatedCar); catch (err) { res.status(400).send(err);});
+
+// Delete a car by ID
+app.delete('/api/cars/:id', verifyToken, async (req, res) => {
+  
+    const deletedCar = await Car.findByIdAndDelete(req.params.id);
+    if (!deletedCar) res.status(404).send('Car not found');
+    res.json(deletedCar);
+  
+    res.status(400)
+  
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`)});
+4. Running the Server
+Run your Node.js application:
+node index.js
+5. Testing with Insomnia
+•	Login: Send a POST request to http://localhost:3000/api/login with a JSON body containing a username and password (not implemented here, as it's simplified).
+•	Create a Car: Send a POST request to http://localhost:3000/api/cars with a valid JWT token in the Authorization header and a JSON body containing make, model, and year.
+•	Get All Cars: Send a GET request to http://localhost:3000/api/cars with a valid JWT token.
+•	Get a Single Car: Send a GET request to http://localhost:3000/api/cars/:id with a valid JWT token, replacing :id with the ID of the car.
+•	Update a Car: Send a PUT request to http://localhost:3000/api/cars/:id with a valid JWT token and a JSON body containing fields to update.
+•	Delete a Car: Send a DELETE request to http://localhost:3000/api/cars/:id with a valid JWT token.
+
